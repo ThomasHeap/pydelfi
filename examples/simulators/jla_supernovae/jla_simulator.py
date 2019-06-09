@@ -34,78 +34,73 @@ class JLA_Model():
 
     # Distance modulus
     def apparent_magnitude(self, theta):
-        
+
         # Cosmological parameters
         Om = theta[0]
         w0 = theta[1]
         h = 0.7
-        
+
         # Systematics parameters
         Mb = theta[2]
         alpha = theta[3]
         beta = theta[4]
         delta_m = theta[5]
-        
+
         # Pull out the relevant things from the data
         z = self.auxiliary_data[:,0]
         x = self.auxiliary_data[:,1]
         c = self.auxiliary_data[:,2]
         v3 = self.auxiliary_data[:,3]
-        
+
         # Holders
         distance_modulus = np.zeros(len(z))
-        
+
         for i in range(len(z)):
             integral = integrate.quad(lambda zz: 1./np.sqrt( Om*(1+zz)**3 + (1-Om)*(1+zz)**(3*(1+w0)) ), 0, z[i])[0]
             distance_modulus[i] = 25 - 5*np.log10(h) + 5*np.log10(3000*(1+z[i])*integral)
-        
+
         return Mb - alpha*x + beta*c + delta_m*v3 + distance_modulus
 
     # Generate realisation of \mu
     def simulation(self, theta, seed):
-        
+
         # Set the seed
         np.random.seed(seed)
 
         # Signal
         mb = self.apparent_magnitude(theta)
-        
+
         # Noise
         noise = np.dot(self.L, np.random.normal(0, 1, len(self.L)))
-        
+
         # Return signal + noise
         return mb + noise
 
     # Generate derivative of \mu w.r.t cosmological parameters
     def dmudt(self, theta_fiducial, h):
-        
+
         # dmdt
         dmdt = np.zeros((self.npar, self.ndata))
-        
+
         # Fiducial data
         d_fiducial = self.apparent_magnitude(theta_fiducial)
-        
+
         # Loop over parameters
         for i in range(0, 2):
-            
+
             # Step theta
             theta = np.copy(self.theta_fiducial)
             theta[i] += h[i]
-            
+
             # Shifted data with same seed
             d_dash = self.apparent_magnitude(theta)
-            
+
             # One step derivative
             dmdt[i,:] = (d_dash - d_fiducial)/h[i]
-        
+
         dmdt[2,:] = np.ones(self.n_sn)
         dmdt[3,:] = -self.auxiliary_data[:,1]
         dmdt[4,:] = self.auxiliary_data[:,2]
         dmdt[5,:] = self.auxiliary_data[:,3]
-        
+
         return dmdt
-
-
-
-
-
