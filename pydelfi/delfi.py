@@ -266,7 +266,7 @@ class Delfi():
                     A_optimal = res.fun
                     theta_optimal = res.x
 
-            # Array of parameters to run simulations
+            # Array of parameters to run
             ps = np.array([theta_optimal for k in range(n_batch)])
 
             # Run a small batch of simulations at the acquisition point
@@ -523,6 +523,8 @@ class Delfi():
 
         ps_batch = (ps_batch - self.p_mean)/self.p_std
         xs_batch = (xs_batch - self.x_mean)/self.x_std
+        print(ps_batch)
+        print(xs_batch)
         self.ps = np.concatenate([self.ps, ps_batch])
         self.xs = np.concatenate([self.xs, xs_batch])
         self.x_train = self.ps.astype(np.float32)
@@ -533,6 +535,8 @@ class Delfi():
 
         ps_batch = (ps_batch - self.p_mean)/self.p_std
         xs_batch = (xs_batch - self.x_mean)/self.x_std
+        print(ps_batch)
+        print(xs_batch)
         self.ps = np.concatenate([self.ps, ps_batch])
         self.xs = np.concatenate([self.xs, xs_batch])
         self.x_train = self.ps.astype(np.float32)
