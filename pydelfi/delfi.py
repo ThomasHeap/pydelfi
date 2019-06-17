@@ -266,7 +266,7 @@ class Delfi():
                     A_optimal = res.fun
                     theta_optimal = res.x
 
-            # Array of parameters to run
+            # Array of parameters to run simulations
             ps = np.array([theta_optimal for k in range(n_batch)])
 
             # Run a small batch of simulations at the acquisition point
@@ -305,6 +305,7 @@ class Delfi():
         err_msg = 'Simulator returns {:s} for parameter values: {} (rank {:d})'
         if self.progress_bar:
             pbar = tqdm(total = self.inds_acpt[-1], desc = "Simulations")
+        trys = 0
         while i_acpt <= self.inds_acpt[-1]:
             try:
                 sims = simulator(ps[i_prop,:], seed_generator(), simulator_args, sub_batch)
@@ -322,7 +323,10 @@ class Delfi():
                 else:
                     print(err_msg.format('NaN/inf', ps[i_prop,:], self.rank))
             except:
-                print(err_msg.format('exception', ps[i_prop,:], self.rank))
+                print(trys)
+                trys += 1
+                pass
+                #print(err_msg.format('exception', ps[i_prop,:], self.rank))
             i_prop += 1
 
         # Reduce results from all processes and return
@@ -366,7 +370,7 @@ class Delfi():
                 proposal = priors.TruncatedGaussian(self.theta_fiducial, 9*self.Finv, self.lower, self.upper)
             else:
                 proposal = self.prior
-
+        xs_batch = 0
         # Generate initial theta values from some broad proposal on
         # master process and share with other processes. Overpropose
         # by a factor of safety to (hopefully) cope gracefully with
@@ -523,8 +527,6 @@ class Delfi():
 
         ps_batch = (ps_batch - self.p_mean)/self.p_std
         xs_batch = (xs_batch - self.x_mean)/self.x_std
-        print(ps_batch)
-        print(xs_batch)
         self.ps = np.concatenate([self.ps, ps_batch])
         self.xs = np.concatenate([self.xs, xs_batch])
         self.x_train = self.ps.astype(np.float32)
@@ -535,8 +537,6 @@ class Delfi():
 
         ps_batch = (ps_batch - self.p_mean)/self.p_std
         xs_batch = (xs_batch - self.x_mean)/self.x_std
-        print(ps_batch)
-        print(xs_batch)
         self.ps = np.concatenate([self.ps, ps_batch])
         self.xs = np.concatenate([self.xs, xs_batch])
         self.x_train = self.ps.astype(np.float32)
