@@ -16,7 +16,7 @@ import pickle
 class Delfi():
 
     def __init__(self, data, prior, nde, \
-                 Finv = None, theta_fiducial = None, param_limits = None, param_names = None, nwalkers = 100, \
+                 Finv = None, theta_fiducial = None, param_limits = None, param_names = None, nwalkers = 300, \
                  posterior_chain_length = 1000, proposal_chain_length = 100, \
                  rank = 0, n_procs = 1, comm = None, red_op = None, \
                  show_plot = True, results_dir = "", progress_bar = True, input_normalization = None,
@@ -122,8 +122,10 @@ class Delfi():
             self.posterior_samples = np.array([self.asymptotic_posterior.draw() for i in range(self.nwalkers*self.posterior_chain_length)])
             self.proposal_samples = np.array([self.asymptotic_posterior.draw() for i in range(self.nwalkers*self.proposal_chain_length)])
         else:
-            self.posterior_samples = np.array([self.prior.draw() for i in range(self.nwalkers*self.posterior_chain_length)])
-            self.proposal_samples = np.array([self.prior.draw() for i in range(self.nwalkers*self.proposal_chain_length)])
+            mean = np.array([8.886491e+00, 7.924279e+00, 1.050515e+01, 7.397940e+00, -3.682372e+00, -4.509307e+00, -6.162728e+00, -6.585028e+00, 1.100000e-03, -3.900000e-01])
+            cov = np.diag(np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.0001, 0.01]))
+            self.posterior_samples = np.array([priors.Gaussian(mean, cov).draw() for i in range(self.nwalkers*self.posterior_chain_length)])
+            self.proposal_samples = np.array([priors.Gaussian(mean, cov).draw() for i in range(self.nwalkers*self.proposal_chain_length)])
         self.posterior_weights = np.ones(len(self.posterior_samples))*1.0/len(self.posterior_samples)
         self.proposal_weights = np.ones(len(self.proposal_samples))*1.0/len(self.proposal_samples)
 
@@ -305,15 +307,16 @@ class Delfi():
         err_msg = 'Simulator returns {:s} for parameter values: {} (rank {:d})'
         if self.progress_bar:
             pbar = tqdm(total = self.inds_acpt[-1], desc = "Simulations")
-        trys = 0
         while i_acpt <= self.inds_acpt[-1]:
             try:
                 sims = simulator(ps[i_prop,:], seed_generator(), simulator_args, sub_batch)
-                # Make sure the sims are the right shape
 
+                # Make sure the sims are the right shape
                 if sub_batch == 1 and len(sims) != 1:
                     sims = np.array([sims])
+                    #print(sims)
                 compressed_sims = np.array([compressor(sims[k], compressor_args) for k in range(sub_batch)])
+                #print(compressed_sims)
                 if np.all(np.isfinite(compressed_sims.flatten())):
                     data_samples[i_acpt*sub_batch:i_acpt*sub_batch+sub_batch,:] = compressed_sims
                     parameter_samples[i_acpt*sub_batch:i_acpt*sub_batch+sub_batch,:] = ps[i_prop,:]
@@ -323,15 +326,15 @@ class Delfi():
                 else:
                     print(err_msg.format('NaN/inf', ps[i_prop,:], self.rank))
             except:
-                print(trys)
-                trys += 1
-                pass
-                #print(err_msg.format('exception', ps[i_prop,:], self.rank))
+                print(err_msg.format('exception', ps[i_prop,:], self.rank))
+
             i_prop += 1
 
         # Reduce results from all processes and return
         data_samples = self.complete_array(data_samples)
+        #print(data_samples)
         parameter_samples = self.complete_array(parameter_samples)
+        #print(parameter_samples)
         return data_samples, parameter_samples
 
     # EMCEE sampler
@@ -358,7 +361,7 @@ class Delfi():
         return sampler.flatchain
 
     def sequential_training(self, simulator, compressor, n_initial, n_batch, n_populations, proposal = None, \
-                            simulator_args = None, compressor_args = None, safety = 5, plot = True, batch_size = 100, \
+                            simulator_args = None, compressor_args = None, safety = 7, plot = True, batch_size = 100, \
                             validation_split = 0.1, epochs = 300, patience = 20, seed_generator = None, \
                             save_intermediate_posteriors = True, sub_batch = 1):
 
@@ -370,7 +373,7 @@ class Delfi():
                 proposal = priors.TruncatedGaussian(self.theta_fiducial, 9*self.Finv, self.lower, self.upper)
             else:
                 proposal = self.prior
-        xs_batch = 0
+
         # Generate initial theta values from some broad proposal on
         # master process and share with other processes. Overpropose
         # by a factor of safety to (hopefully) cope gracefully with
@@ -503,7 +506,8 @@ class Delfi():
         for n in range(self.n_ndes):
             # Train the NDE
             val_loss, train_loss = self.trainer[n].train(self.sess, training_data, validation_split = validation_split, epochs=epochs, batch_size=batch_size, progress_bar=self.progress_bar, patience=patience, saver_name=self.graph_restore_filename, mode=mode)
-
+            print(val_loss)
+            print(train_loss)
             # Save the training and validation losses
             self.training_loss[n] = np.concatenate([self.training_loss[n], train_loss])
             self.validation_loss[n] = np.concatenate([self.validation_loss[n], val_loss])
@@ -543,7 +547,7 @@ class Delfi():
         self.y_train = self.xs.astype(np.float32)
         self.n_sims += len(ps_batch)
 
-    def fisher_pretraining(self, n_batch=5000, plot=True, batch_size=100, validation_split=0.1, epochs=1000, patience=20):
+    def fisher_pretraining(self, n_batch=5000, plot=True, batch_size=100, validation_split=0.1, epochs=1000, patience=20, mode='regression'):
 
         # Train on master only
         if self.rank == 0:
@@ -584,8 +588,14 @@ class Delfi():
             fisher_x_train = ps.astype(np.float32).reshape((3*n_batch, self.npar))
             fisher_y_train = xs.astype(np.float32).reshape((3*n_batch, self.npar))
 
-            # Train the networks on these initial simulations
-            self.train_ndes(training_data=[fisher_x_train, fisher_y_train, np.atleast_2d(fisher_logpdf_train).reshape(-1,1)], validation_split = validation_split, epochs=epochs, batch_size=batch_size, patience=patience, mode='regression')
+            # Train the networks depending on the chosen mode (regression = default)
+
+            if mode == "regression":
+                # Train the networks on these initial simulations
+                self.train_ndes(training_data=[fisher_x_train, fisher_y_train, np.atleast_2d(fisher_logpdf_train).reshape(-1,1)], validation_split = validation_split, epochs=epochs, batch_size=batch_size, patience=patience, mode='regression')
+            if mode == "samples":
+                # Train the networks on these initial simulations
+                self.train_ndes(training_data=[fisher_x_train, fisher_y_train], validation_split = validation_split, epochs=epochs, batch_size=batch_size, patience=patience, mode='samples')
 
             # Generate posterior samples
             if plot==True:
@@ -614,7 +624,7 @@ class Delfi():
             g.settings.alpha_filled_add=0.6
             g.settings.axes_fontsize=14
             g.settings.legend_fontsize=16
-            g.settings.lab_fontsize=20
+            g.settings.lab_fontsize=12
             g.triangle_plot(mc_samples, filled_compare=True, normalized=True)
             for i in range(0, len(samples[0][0,:])):
                 for j in range(0, i+1):

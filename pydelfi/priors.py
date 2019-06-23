@@ -12,14 +12,14 @@ class TruncatedGaussian():
         self.upper = upper
         self.L = np.linalg.cholesky(C)
         self.logdet = np.log(np.linalg.det(C))
-        
+
     def loguniform(self, x):
 
         inrange = np.prod(x > self.lower)*np.prod(x < self.upper)
         return inrange*np.log(np.prod(self.upper-self.lower)) - (1 - inrange)*1e300
-    
+
     def uniform(self, x):
-    
+
         inrange = np.prod(x > self.lower)*np.prod(x < self.upper)
         return inrange*np.prod(self.upper-self.lower)
 
@@ -36,9 +36,67 @@ class TruncatedGaussian():
         return np.exp(self.logpdf(x))
 
     def logpdf(self, x):
-        
+
         return np.array([self.loguniform(xx) - 0.5*self.logdet - 0.5*np.dot((xx - self.mean), np.dot(self.Cinv,(xx - self.mean)) ) for xx in x])
 
+class Gaussian():
+
+    def __init__(self, mean, C):
+
+        self.mean = mean
+        self.C = C
+        self.Cinv = np.linalg.inv(C)
+        self.L = np.linalg.cholesky(C)
+        self.logdet = np.log(np.linalg.det(C))
+
+    def draw(self):
+
+        x = self.mean + np.dot(self.L, np.random.normal(0, 1, len(self.mean)))
+        return x
+
+    def pdf(self, x):
+
+        return np.exp(self.logpdf(x))
+
+    def logpdf(self, x):
+
+        return np.array([0.5*self.logdet - 0.5*np.dot((xx - self.mean), np.dot(self.Cinv,(xx - self.mean)) ) for xx in x])
+
+class Gaussian_Unif():
+
+    def __init__(self, mean, C, lower, upper, num):
+
+        self.mean = mean
+        self.C = C
+        self.Cinv = np.linalg.inv(C)
+        self.lower = lower
+        self.upper = upper
+        self.num = num
+        self.L = np.linalg.cholesky(C)
+        self.logdet = np.log(np.linalg.det(C))
+
+    def loguniform(self, x):
+
+        inrange = np.prod(x[:-self.num] > self.lower)*np.prod(x[:-self.num] < self.upper)
+        return inrange*np.log(np.prod(self.upper-self.lower)) - (1 - inrange)*1e300
+
+    def uniform(self, x):
+
+        inrange = np.prod(x[:-self.num] > self.lower)*np.prod(x[:-self.num] < self.upper)
+        return inrange*np.prod(self.upper-self.lower)
+
+    def draw(self):
+
+        x = self.mean + np.dot(self.L, np.random.normal(0, 1, len(self.mean)))
+        return np.concatenate((np.random.uniform(self.lower, self.upper),x))
+
+    def pdf(self, x):
+
+        return np.exp(self.logpdf(x))
+
+    def logpdf(self, x):
+
+        return np.array([self.loguniform(xx) - 0.5*self.logdet - 0.5*np.dot((xx[-self.num:] - self.mean), np.dot(self.Cinv,(xx[-self.num:] - self.mean)) ) for xx in x])
 
 class Uniform():
 
@@ -51,9 +109,9 @@ class Uniform():
 
         inrange = lambda y: np.prod(y > self.lower)*np.prod(y < self.upper)
         return np.array([inrange(xx)*np.log(np.prod(self.upper-self.lower)) - (1 - inrange(xx))*1e300 for xx in x])
-    
+
     def pdf(self, x):
-        
+
         inrange = lambda y: np.prod(y > self.lower)*np.prod(y < self.upper)
         return np.array([inrange(xx)*np.prod(self.upper-self.lower) for xx in x])
 
