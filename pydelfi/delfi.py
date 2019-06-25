@@ -309,6 +309,7 @@ class Delfi():
             pbar = tqdm(total = self.inds_acpt[-1], desc = "Simulations")
         while i_acpt <= self.inds_acpt[-1]:
             try:
+                print(ps[i_prop,:])
                 sims = simulator(ps[i_prop,:], seed_generator(), simulator_args, sub_batch)
 
                 # Make sure the sims are the right shape
