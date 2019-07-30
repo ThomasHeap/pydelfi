@@ -505,6 +505,7 @@ class Delfi():
             self.validation_loss[n] = np.concatenate([self.validation_loss[n], val_loss])
 
         # Update weights for stacked density estimator
+        
         self.stacking_weights = -np.array([self.training_loss[i][-1] for i in range(self.n_ndes)])
         self.stacking_weights = np.exp(np.add(-np.max(self.stacking_weights), self.stacking_weights))
         self.stacking_weights = self.stacking_weights/sum(self.stacking_weights)
