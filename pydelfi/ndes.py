@@ -131,7 +131,7 @@ class ConditionalGaussianMade:
         Mmp = tf.constant(Mmp, dtype=dtype, name='Mmp')
 
         return Ms, Mmp
-    
+
     def create_weights_conditional(self, n_comps):
         """
         Creates all learnable weight matrices and bias vectors.
@@ -143,7 +143,7 @@ class ConditionalGaussianMade:
         bs = []
 
         n_units = np.concatenate(([self.n_data], self.n_hiddens))
-        
+
         Wx = tf.get_variable("Wx", [self.n_parameters, self.n_hiddens[0]], initializer = tf.random_normal_initializer(0., np.sqrt(1./(self.n_parameters + 1))) )
 
         for l, (N0, N1) in enumerate(zip(n_units[:-1], n_units[1:])):
@@ -181,7 +181,7 @@ class ConditionalGaussianMade:
         :param log: whether to return probabilities in the log domain
         :return: log probabilities: log p(y|x)
         """
-        
+
         x, y = xy
         lprob = sess.run(self.L,feed_dict={self.parameters:x,self.data:y})
 
@@ -220,7 +220,7 @@ class ConditionalMaskedAutoregressiveFlow:
         self.parameters = tf.placeholder(dtype=dtype,shape=[None,n_parameters],name='parameters') if input_parameters is None else input_parameters
         self.data = tf.placeholder(dtype=dtype,shape=[None,n_data],name='data') if input_data is None else input_data
         self.logpdf = tf.placeholder(dtype=dtype,shape=[None,1],name='logpdf') if logpdf is None else logpdf
-        
+
         self.parms = []
 
         self.mades = []
@@ -229,7 +229,7 @@ class ConditionalMaskedAutoregressiveFlow:
         self.logdet_dudy = 0.0
 
         for i in range(n_mades):
-            
+
             # create a new made
             with tf.variable_scope('nde_' + str(index) + '_made_' + str(i + 1)):
                 made = ConditionalGaussianMade(n_parameters, n_data, n_hiddens, act_fun,
@@ -259,7 +259,7 @@ class ConditionalMaskedAutoregressiveFlow:
         :param log: whether to return probabilities in the log domain
         :return: log probabilities: log p(y|x)
         """
-        
+
         x, y = xy
         lprob = sess.run(self.L,feed_dict={self.parameters:x,self.data:y})
 
@@ -281,7 +281,7 @@ class MixtureDensityNetwork:
         :param input: tensorflow placeholder to serve as input; if None, a new placeholder is created
         :param output: tensorflow placeholder to serve as output; if None, a new placeholder is created
         """
-        
+
         # save input arguments
         self.n_parameters = n_parameters
         self.n_data = n_data
@@ -289,11 +289,11 @@ class MixtureDensityNetwork:
         self.N = int((self.n_data + self.n_data * (self.n_data + 1) / 2 + 1)*self.M)
         self.n_hidden = n_hidden
         self.activations = activations
-        
+
         self.parameters = tf.placeholder(dtype=dtype,shape=[None,self.n_parameters],name='parameters') if input_parameters is None else input_parameters
         self.data = tf.placeholder(dtype=dtype,shape=[None,self.n_data],name='data') if input_data is None else input_data
         self.logpdf = tf.placeholder(dtype=dtype,shape=[None,1],name='logpdf') if logpdf is None else logpdf
-        
+
         # Build the layers of the network
         self.layers = [self.parameters]
         self.weights = []
@@ -327,7 +327,7 @@ class MixtureDensityNetwork:
         self.Sigma = tf.identity(self.Sigma, name = "Sigma")
         self.alpha = tf.identity(self.alpha, name = "alpha")
         self.det = tf.identity(self.det, name = "det")
-        
+
         # Log likelihoods
         self.L = tf.log(tf.reduce_sum(tf.exp(-0.5*tf.reduce_sum(tf.square(tf.einsum("ijlk,ijk->ijl", self.Sigma, tf.subtract(tf.expand_dims(self.data, 1), self.mu))), 2) + tf.log(self.alpha) + tf.log(self.det) - self.n_data*np.log(2. * np.pi) / 2.), 1, keepdims=True) + 1e-37, name = "L")
 
@@ -343,11 +343,8 @@ class MixtureDensityNetwork:
         :param log: whether to return probabilities in the log domain
         :return: log probabilities: log p(y|x)
         """
-        
+
         x, y = xy
         lprob = sess.run(self.L,feed_dict={self.parameters:x,self.data:y})
 
         return lprob if log else np.exp(lprob)
-
-
-

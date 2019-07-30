@@ -17,4 +17,3 @@ setup(name='pydelfi',
           "scipy",
           "tqdm"
       ])
-

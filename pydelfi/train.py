@@ -101,7 +101,6 @@ class ConditionalTrainer():
             validation_losses.append(val_loss)
             training_losses.append(train_loss)
 
-
             if val_loss < bst_loss:
                 bst_loss = val_loss
                 if saver_name is not None:

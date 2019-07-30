@@ -60,7 +60,7 @@ class Gaussian():
 
     def logpdf(self, x):
 
-        return np.array([0.5*self.logdet - 0.5*np.dot((xx - self.mean), np.dot(self.Cinv,(xx - self.mean)) ) for xx in x])
+        return np.array([-0.5*self.logdet - 0.5*np.dot((xx - self.mean), np.dot(self.Cinv,(xx - self.mean)) ) for xx in x])
 
 class Gaussian_Unif():
 
